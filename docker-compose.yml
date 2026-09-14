@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pipette_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pipette
+      POSTGRES_USER: pipette
+      POSTGRES_PASSWORD: pipette_secret
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # База данных сохраняется в проекте: ./pgdata
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipette -d pipette"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: pipette_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: pipette
+      DB_USER: pipette
+      DB_PASSWORD: pipette_secret
+      JWT_SECRET: change_this_secret_key
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Бэкапы хранятся в проекте: ./data/backups
+      - ./data:/app/data
+      # Фронтенд можно править без пересборки
+      - ./frontend:/app/frontend
+
+volumes:
+  pgdata_local:
